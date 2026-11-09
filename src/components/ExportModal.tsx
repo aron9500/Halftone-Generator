@@ -203,6 +203,26 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
           </div>
 
+          {/* Active Setup Summary */}
+          <div className="flex flex-wrap items-center gap-2 p-2.5 bg-slate-100/80 rounded-xl border border-slate-200 text-[11px]">
+            <span className="font-bold text-slate-800">Setup:</span>
+            <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 uppercase font-bold text-[10px] text-slate-900">
+              {options.pattern}
+            </span>
+            <span className="text-slate-400">•</span>
+            <span className="font-mono text-slate-700 font-semibold">{options.angle}° Winkel</span>
+            <span className="text-slate-400">•</span>
+            <span className="font-bold text-slate-900">
+              {options.colorMode === 'cmyk'
+                ? 'CMYK (4 Platten)'
+                : options.colorMode === 'rgb'
+                ? 'RGB (3 Kanäle)'
+                : options.colorMode === 'duotone'
+                ? 'Duotone'
+                : 'Monochrom'}
+            </span>
+          </div>
+
           {exportTab === 'svg' ? (
             <div className="space-y-4">
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">

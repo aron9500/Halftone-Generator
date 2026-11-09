@@ -1,16 +1,21 @@
 export type PatternType = 
   | 'circle' 
   | 'square' 
-  | 'line' 
   | 'diamond' 
+  | 'triangle'
   | 'hexagon' 
+  | 'line' 
   | 'cross' 
   | 'star' 
+  | 'ring'
+  | 'heart'
   | 'cmyk';
 
-export type ColorMode = 'monochrome' | 'original' | 'duotone' | 'cmyk';
+export type ColorMode = 'monochrome' | 'original' | 'duotone' | 'cmyk' | 'rgb';
 
 export type GridType = 'square' | 'hex' | 'radial' | 'spiral';
+
+export type SeparationPlate = 'all' | 'c' | 'm' | 'y' | 'k' | 'r' | 'g' | 'b';
 
 export interface HalftoneOptions {
   // Grid & Scale
@@ -39,13 +44,57 @@ export interface HalftoneOptions {
   duotoneColor1: string;  // Dark tone color
   duotoneColor2: string;  // Light tone color
 
-  // CMYK Specific Angles
+  // CMYK Color Separation Options
   cmykAngles: {
     c: number; // Cyan angle (default 15)
     m: number; // Magenta angle (default 75)
     y: number; // Yellow angle (default 0)
     k: number; // Key/Black angle (default 45)
   };
+  cmykEnabled: {
+    c: boolean;
+    m: boolean;
+    y: boolean;
+    k: boolean;
+  };
+  cmykColors: {
+    c: string; // '#00ffff'
+    m: string; // '#ff00ff'
+    y: string; // '#ffff00'
+    k: string; // '#000000'
+  };
+  cmykGain: {
+    c: number; // 0.2 to 2.0 (default 1.0)
+    m: number;
+    y: number;
+    k: number;
+  };
+
+  // RGB Color Separation Options
+  rgbAngles: {
+    r: number; // Red angle (default 15)
+    g: number; // Green angle (default 75)
+    b: number; // Blue angle (default 0)
+  };
+  rgbEnabled: {
+    r: boolean;
+    g: boolean;
+    b: boolean;
+  };
+  rgbColors: {
+    r: string; // '#ff0000'
+    g: string; // '#00ff00'
+    b: string; // '#0000ff'
+  };
+  rgbGain: {
+    r: number; // 0.2 to 2.0 (default 1.0)
+    g: number;
+    b: number;
+  };
+
+  // Separation Global Angle Shift & Live Plate Inspection
+  separationOffsetAngle: number; // Shift all separation channels in sync (0 to 360)
+  activePlate: SeparationPlate;  // Live preview plate isolation ('all' or specific plate)
 
   // Line Pattern Specifics
   lineThicknessRatio: number; // 0.1 to 2.0

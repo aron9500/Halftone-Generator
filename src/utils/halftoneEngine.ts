@@ -266,7 +266,13 @@ export function renderHalftoneCanvas(
     targetCtx.fillRect(0, 0, width, height);
   }
 
-  // Handle CMYK 4-Color Screen mode
+  // Handle RGB Additive Screen Separation
+  if (options.colorMode === 'rgb') {
+    renderRGBCanvas(targetCtx, imageData, width, height, options);
+    return;
+  }
+
+  // Handle CMYK 4-Color Subtractive Screen mode
   if (options.colorMode === 'cmyk' || options.pattern === 'cmyk') {
     renderCMYKCanvas(targetCtx, imageData, width, height, options);
     return;
@@ -299,7 +305,7 @@ export function renderHalftoneCanvas(
   targetCtx.restore();
 }
 
-// CMYK Canvas Renderer
+// CMYK Subtractive Color Separation Canvas Renderer
 function renderCMYKCanvas(
   ctx: CanvasRenderingContext2D,
   imageData: ImageData,
@@ -307,29 +313,163 @@ function renderCMYKCanvas(
   height: number,
   options: HalftoneOptions
 ) {
+  const activeShape = options.pattern === 'cmyk' ? 'circle' : options.pattern;
+  const rotOffset = options.separationOffsetAngle || 0;
+
   const cmykChannels = [
-    { name: 'C', color: '#00ffff', angle: options.cmykAngles.c, key: 'c' as const },
-    { name: 'M', color: '#ff00ff', angle: options.cmykAngles.m, key: 'm' as const },
-    { name: 'Y', color: '#ffff00', angle: options.cmykAngles.y, key: 'yVal' as const },
-    { name: 'K', color: '#000000', angle: options.cmykAngles.k, key: 'k' as const },
+    {
+      name: 'Cyan',
+      plateId: 'c' as const,
+      color: options.cmykColors?.c || '#00ffff',
+      angle: (options.cmykAngles.c + rotOffset) % 360,
+      key: 'c' as const,
+      enabled: options.cmykEnabled?.c ?? true,
+      gain: options.cmykGain?.c ?? 1.0,
+    },
+    {
+      name: 'Magenta',
+      plateId: 'm' as const,
+      color: options.cmykColors?.m || '#ff00ff',
+      angle: (options.cmykAngles.m + rotOffset) % 360,
+      key: 'm' as const,
+      enabled: options.cmykEnabled?.m ?? true,
+      gain: options.cmykGain?.m ?? 1.0,
+    },
+    {
+      name: 'Yellow',
+      plateId: 'y' as const,
+      color: options.cmykColors?.y || '#ffff00',
+      angle: (options.cmykAngles.y + rotOffset) % 360,
+      key: 'yVal' as const,
+      enabled: options.cmykEnabled?.y ?? true,
+      gain: options.cmykGain?.y ?? 1.0,
+    },
+    {
+      name: 'Key',
+      plateId: 'k' as const,
+      color: options.cmykColors?.k || '#000000',
+      angle: (options.cmykAngles.k + rotOffset) % 360,
+      key: 'k' as const,
+      enabled: options.cmykEnabled?.k ?? true,
+      gain: options.cmykGain?.k ?? 1.0,
+    },
   ];
 
+  // Plate filter for real-time inspection
+  const activeChannels = cmykChannels.filter((ch) => {
+    if (!ch.enabled) return false;
+    if (options.activePlate && options.activePlate !== 'all') {
+      return options.activePlate === ch.plateId;
+    }
+    return true;
+  });
+
+  // Use multiply blending for realistic subtractive ink overprinting
   ctx.globalCompositeOperation = 'multiply';
 
-  cmykChannels.forEach((ch) => {
+  const shapeRotRad = (options.shapeRotation * Math.PI) / 180;
+
+  activeChannels.forEach((ch) => {
     const points = sampleGridPoints(imageData, width, height, options, ch.angle);
 
     ctx.fillStyle = ch.color;
+    ctx.strokeStyle = ch.color;
 
     points.forEach((pt) => {
-      const channelVal = pt[ch.key] || 0;
+      const channelVal = (pt[ch.key] || 0) * ch.gain;
       const channelSize = channelVal * options.spacing * options.maxDotSize;
 
       if (channelSize < options.minDotSize || channelSize <= 0) return;
 
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, channelSize / 2, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.save();
+      ctx.translate(pt.x, pt.y);
+      if (shapeRotRad !== 0) {
+        ctx.rotate(shapeRotRad);
+      }
+      drawShapeOnCtx(ctx, activeShape, channelSize, options.spacing, options.lineThicknessRatio);
+      ctx.restore();
+    });
+  });
+
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+// RGB Additive Color Separation Canvas Renderer
+function renderRGBCanvas(
+  ctx: CanvasRenderingContext2D,
+  imageData: ImageData,
+  width: number,
+  height: number,
+  options: HalftoneOptions
+) {
+  const activeShape = options.pattern === 'cmyk' ? 'circle' : options.pattern;
+  const rotOffset = options.separationOffsetAngle || 0;
+
+  const rgbChannels = [
+    {
+      name: 'Red',
+      plateId: 'r' as const,
+      color: options.rgbColors?.r || '#ff1744',
+      angle: ((options.rgbAngles?.r ?? 15) + rotOffset) % 360,
+      key: 'r' as const,
+      enabled: options.rgbEnabled?.r ?? true,
+      gain: options.rgbGain?.r ?? 1.0,
+    },
+    {
+      name: 'Green',
+      plateId: 'g' as const,
+      color: options.rgbColors?.g || '#00e676',
+      angle: ((options.rgbAngles?.g ?? 75) + rotOffset) % 360,
+      key: 'g' as const,
+      enabled: options.rgbEnabled?.g ?? true,
+      gain: options.rgbGain?.g ?? 1.0,
+    },
+    {
+      name: 'Blue',
+      plateId: 'b' as const,
+      color: options.rgbColors?.b || '#2979ff',
+      angle: ((options.rgbAngles?.b ?? 0) + rotOffset) % 360,
+      key: 'b' as const,
+      enabled: options.rgbEnabled?.b ?? true,
+      gain: options.rgbGain?.b ?? 1.0,
+    },
+  ];
+
+  // Plate filter for real-time inspection
+  const activeChannels = rgbChannels.filter((ch) => {
+    if (!ch.enabled) return false;
+    if (options.activePlate && options.activePlate !== 'all') {
+      return options.activePlate === ch.plateId;
+    }
+    return true;
+  });
+
+  // Screen additive blending for RGB light / display halftones
+  ctx.globalCompositeOperation = 'screen';
+
+  const shapeRotRad = (options.shapeRotation * Math.PI) / 180;
+
+  activeChannels.forEach((ch) => {
+    const points = sampleGridPoints(imageData, width, height, options, ch.angle);
+
+    ctx.fillStyle = ch.color;
+    ctx.strokeStyle = ch.color;
+
+    points.forEach((pt) => {
+      // In RGB, luminance of each channel dictates dot size (or inverse if inverted)
+      const rawIntensity = pt[ch.key] / 255;
+      const intensity = options.invert ? (1 - rawIntensity) : rawIntensity;
+      const channelSize = intensity * options.spacing * options.maxDotSize * ch.gain;
+
+      if (channelSize < options.minDotSize || channelSize <= 0) return;
+
+      ctx.save();
+      ctx.translate(pt.x, pt.y);
+      if (shapeRotRad !== 0) {
+        ctx.rotate(shapeRotRad);
+      }
+      drawShapeOnCtx(ctx, activeShape, channelSize, options.spacing, options.lineThicknessRatio);
+      ctx.restore();
     });
   });
 
@@ -348,6 +488,7 @@ function drawShapeOnCtx(
 
   switch (pattern) {
     case 'circle':
+    case 'cmyk':
       ctx.beginPath();
       ctx.arc(0, 0, Math.max(0.2, r), 0, Math.PI * 2);
       ctx.fill();
@@ -363,6 +504,17 @@ function drawShapeOnCtx(
       ctx.fillRect(-r, -r, size, size);
       ctx.restore();
       break;
+
+    case 'triangle': {
+      ctx.beginPath();
+      const h = r * 1.732; // sqrt(3)
+      ctx.moveTo(0, -r);
+      ctx.lineTo(r, r * 0.732);
+      ctx.lineTo(-r, r * 0.732);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
 
     case 'line': {
       const thickness = Math.max(0.5, size * lineRatio);
@@ -385,7 +537,7 @@ function drawShapeOnCtx(
     }
 
     case 'cross': {
-      const th = Math.max(1, size * 0.25);
+      const th = Math.max(1, size * 0.28);
       ctx.fillRect(-r, -th / 2, size, th);
       ctx.fillRect(-th / 2, -r, th, size);
       break;
@@ -394,7 +546,7 @@ function drawShapeOnCtx(
     case 'star': {
       ctx.beginPath();
       const outerR = r;
-      const innerR = r * 0.4;
+      const innerR = r * 0.42;
       for (let i = 0; i < 10; i++) {
         const radius = i % 2 === 0 ? outerR : innerR;
         const angle = (i * Math.PI) / 5 - Math.PI / 2;
@@ -403,6 +555,27 @@ function drawShapeOnCtx(
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+
+    case 'ring': {
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(0.5, r), 0, Math.PI * 2);
+      ctx.arc(0, 0, Math.max(0.2, r * 0.52), 0, Math.PI * 2, true);
+      ctx.fill();
+      break;
+    }
+
+    case 'heart': {
+      ctx.beginPath();
+      const top = -r * 0.45;
+      ctx.moveTo(0, r * 0.85);
+      ctx.bezierCurveTo(-r * 1.15, r * 0.2, -r * 1.15, top, -r * 0.5, top);
+      ctx.bezierCurveTo(-r * 0.1, top, 0, -r * 0.05, 0, -r * 0.05);
+      ctx.bezierCurveTo(0, -r * 0.05, r * 0.1, top, r * 0.5, top);
+      ctx.bezierCurveTo(r * 1.15, top, r * 1.15, r * 0.2, 0, r * 0.85);
       ctx.closePath();
       ctx.fill();
       break;
@@ -423,6 +596,16 @@ export function generateHalftoneSVG(
   options: HalftoneOptions,
   optimizePath: boolean = true
 ): string {
+  // Handle RGB Additive Screen Separation SVG
+  if (options.colorMode === 'rgb') {
+    return generateRGBSVG(imageData, width, height, options, optimizePath);
+  }
+
+  // Handle CMYK Subtractive Screen Separation SVG
+  if (options.colorMode === 'cmyk' || options.pattern === 'cmyk') {
+    return generateCMYKSVG(imageData, width, height, options, optimizePath);
+  }
+
   const points = sampleGridPoints(imageData, width, height, options);
 
   let svgElements: string[] = [];
@@ -430,10 +613,6 @@ export function generateHalftoneSVG(
   // Background
   if (!options.transparentBg) {
     svgElements.push(`<rect width="${width}" height="${height}" fill="${options.bgColor}"/>`);
-  }
-
-  if (options.colorMode === 'cmyk' || options.pattern === 'cmyk') {
-    return generateCMYKSVG(imageData, width, height, options);
   }
 
   // Group by color for path optimization if enabled
@@ -450,29 +629,45 @@ export function generateHalftoneSVG(
   const rotRad = (options.shapeRotation * Math.PI) / 180;
 
   colorMap.forEach((pts, color) => {
-    if (optimizePath && (options.pattern === 'circle' || options.pattern === 'square' || options.pattern === 'diamond')) {
+    const canCompound = optimizePath && (
+      options.pattern === 'circle' || 
+      options.pattern === 'square' || 
+      options.pattern === 'diamond' ||
+      options.pattern === 'triangle' ||
+      options.pattern === 'ring'
+    ) && options.shapeRotation === 0;
+
+    if (canCompound) {
       // Create single compound path d="..." string
       const pathSegments: string[] = [];
 
       pts.forEach((pt) => {
         const r = pt.size / 2;
         if (options.pattern === 'circle') {
-          // SVG circle arc path
           pathSegments.push(
-            `M ${pt.x - r},${pt.y} a ${r},${r} 0 1,0 ${r * 2},0 a ${r},${r} 0 1,0 -${r * 2},0`
+            `M ${(pt.x - r).toFixed(2)},${pt.y.toFixed(2)} a ${r.toFixed(2)},${r.toFixed(2)} 0 1,0 ${(r * 2).toFixed(2)},0 a ${r.toFixed(2)},${r.toFixed(2)} 0 1,0 -${(r * 2).toFixed(2)},0`
           );
         } else if (options.pattern === 'square') {
           pathSegments.push(
-            `M ${pt.x - r},${pt.y - r} h ${pt.size} v ${pt.size} h -${pt.size} Z`
+            `M ${(pt.x - r).toFixed(2)},${(pt.y - r).toFixed(2)} h ${pt.size.toFixed(2)} v ${pt.size.toFixed(2)} h -${pt.size.toFixed(2)} Z`
           );
         } else if (options.pattern === 'diamond') {
           pathSegments.push(
-            `M ${pt.x},${pt.y - r} L ${pt.x + r},${pt.y} L ${pt.x},${pt.y + r} L ${pt.x - r},${pt.y} Z`
+            `M ${pt.x.toFixed(2)},${(pt.y - r).toFixed(2)} L ${(pt.x + r).toFixed(2)},${pt.y.toFixed(2)} L ${pt.x.toFixed(2)},${(pt.y + r).toFixed(2)} L ${(pt.x - r).toFixed(2)},${pt.y.toFixed(2)} Z`
+          );
+        } else if (options.pattern === 'triangle') {
+          pathSegments.push(
+            `M ${pt.x.toFixed(2)},${(pt.y - r).toFixed(2)} L ${(pt.x + r).toFixed(2)},${(pt.y + r * 0.732).toFixed(2)} L ${(pt.x - r).toFixed(2)},${(pt.y + r * 0.732).toFixed(2)} Z`
+          );
+        } else if (options.pattern === 'ring') {
+          const innerR = r * 0.52;
+          pathSegments.push(
+            `M ${(pt.x - r).toFixed(2)},${pt.y.toFixed(2)} a ${r.toFixed(2)},${r.toFixed(2)} 0 1,0 ${(r * 2).toFixed(2)},0 a ${r.toFixed(2)},${r.toFixed(2)} 0 1,0 -${(r * 2).toFixed(2)},0 M ${(pt.x - innerR).toFixed(2)},${pt.y.toFixed(2)} a ${innerR.toFixed(2)},${innerR.toFixed(2)} 0 1,1 ${(innerR * 2).toFixed(2)},0 a ${innerR.toFixed(2)},${innerR.toFixed(2)} 0 1,1 -${(innerR * 2).toFixed(2)},0`
           );
         }
       });
 
-      svgElements.push(`<path fill="${color}" d="${pathSegments.join(' ')}"/>`);
+      svgElements.push(`<path fill="${color}" fill-rule="evenodd" d="${pathSegments.join(' ')}"/>`);
     } else {
       // Individual SVG shapes inside group
       const shapeElements: string[] = [];
@@ -491,6 +686,16 @@ export function generateHalftoneSVG(
           case 'diamond':
             shapeElements.push(`<rect x="${(pt.x - r).toFixed(2)}" y="${(pt.y - r).toFixed(2)}" width="${pt.size.toFixed(2)}" height="${pt.size.toFixed(2)}" transform="rotate(${options.shapeRotation + 45} ${pt.x} ${pt.y})"/>`);
             break;
+          case 'triangle': {
+            const tx1 = pt.x.toFixed(2);
+            const ty1 = (pt.y - r).toFixed(2);
+            const tx2 = (pt.x + r).toFixed(2);
+            const ty2 = (pt.y + r * 0.732).toFixed(2);
+            const tx3 = (pt.x - r).toFixed(2);
+            const ty3 = (pt.y + r * 0.732).toFixed(2);
+            shapeElements.push(`<polygon points="${tx1},${ty1} ${tx2},${ty2} ${tx3},${ty3}"${transformAttr}/>`);
+            break;
+          }
           case 'line': {
             const th = Math.max(0.5, pt.size * options.lineThicknessRatio);
             shapeElements.push(`<rect x="${(pt.x - options.spacing / 2).toFixed(2)}" y="${(pt.y - th / 2).toFixed(2)}" width="${options.spacing}" height="${th.toFixed(2)}"${transformAttr}/>`);
@@ -507,10 +712,15 @@ export function generateHalftoneSVG(
             shapeElements.push(`<polygon points="${hexPoints.join(' ')}"/>`);
             break;
           }
+          case 'cross': {
+            const th = Math.max(1, pt.size * 0.28);
+            shapeElements.push(`<g${transformAttr}><rect x="${(pt.x - r).toFixed(2)}" y="${(pt.y - th / 2).toFixed(2)}" width="${pt.size.toFixed(2)}" height="${th.toFixed(2)}"/><rect x="${(pt.x - th / 2).toFixed(2)}" y="${(pt.y - r).toFixed(2)}" width="${th.toFixed(2)}" height="${pt.size.toFixed(2)}"/></g>`);
+            break;
+          }
           case 'star': {
             const starPts: string[] = [];
             const outerR = r;
-            const innerR = r * 0.4;
+            const innerR = r * 0.42;
             for (let i = 0; i < 10; i++) {
               const radius = i % 2 === 0 ? outerR : innerR;
               const angle = (i * Math.PI) / 5 - Math.PI / 2 + rotRad;
@@ -519,6 +729,16 @@ export function generateHalftoneSVG(
               starPts.push(`${sx.toFixed(2)},${sy.toFixed(2)}`);
             }
             shapeElements.push(`<polygon points="${starPts.join(' ')}"/>`);
+            break;
+          }
+          case 'ring': {
+            const innerR = r * 0.52;
+            shapeElements.push(`<path fill-rule="evenodd" d="M ${(pt.x - r).toFixed(2)},${pt.y.toFixed(2)} a ${r.toFixed(2)},${r.toFixed(2)} 0 1,0 ${(r * 2).toFixed(2)},0 a ${r.toFixed(2)},${r.toFixed(2)} 0 1,0 -${(r * 2).toFixed(2)},0 M ${(pt.x - innerR).toFixed(2)},${pt.y.toFixed(2)} a ${innerR.toFixed(2)},${innerR.toFixed(2)} 0 1,1 ${(innerR * 2).toFixed(2)},0 a ${innerR.toFixed(2)},${innerR.toFixed(2)} 0 1,1 -${(innerR * 2).toFixed(2)},0"${transformAttr}/>`);
+            break;
+          }
+          case 'heart': {
+            const top = -r * 0.45;
+            shapeElements.push(`<path d="M ${pt.x.toFixed(2)},${(pt.y + r * 0.85).toFixed(2)} C ${(pt.x - r * 1.15).toFixed(2)},${(pt.y + r * 0.2).toFixed(2)} ${(pt.x - r * 1.15).toFixed(2)},${(pt.y + top).toFixed(2)} ${(pt.x - r * 0.5).toFixed(2)},${(pt.y + top).toFixed(2)} C ${(pt.x - r * 0.1).toFixed(2)},${(pt.y + top).toFixed(2)} ${pt.x.toFixed(2)},${(pt.y - r * 0.05).toFixed(2)} ${pt.x.toFixed(2)},${(pt.y - r * 0.05).toFixed(2)} C ${pt.x.toFixed(2)},${(pt.y - r * 0.05).toFixed(2)} ${(pt.x + r * 0.1).toFixed(2)},${(pt.y + top).toFixed(2)} ${(pt.x + r * 0.5).toFixed(2)},${(pt.y + top).toFixed(2)} C ${(pt.x + r * 1.15).toFixed(2)},${(pt.y + top).toFixed(2)} ${(pt.x + r * 1.15).toFixed(2)},${(pt.y + r * 0.2).toFixed(2)} ${pt.x.toFixed(2)},${(pt.y + r * 0.85).toFixed(2)} Z"${transformAttr}/>`);
             break;
           }
           default:
@@ -540,14 +760,58 @@ function generateCMYKSVG(
   imageData: ImageData,
   width: number,
   height: number,
-  options: HalftoneOptions
+  options: HalftoneOptions,
+  optimizePath: boolean = true
 ): string {
+  const activeShape = options.pattern === 'cmyk' ? 'circle' : options.pattern;
+  const rotOffset = options.separationOffsetAngle || 0;
+
   const cmykChannels = [
-    { name: 'cyan', color: '#00ffff', angle: options.cmykAngles.c, key: 'c' as const },
-    { name: 'magenta', color: '#ff00ff', angle: options.cmykAngles.m, key: 'm' as const },
-    { name: 'yellow', color: '#ffff00', angle: options.cmykAngles.y, key: 'yVal' as const },
-    { name: 'black', color: '#000000', angle: options.cmykAngles.k, key: 'k' as const },
+    {
+      name: 'cyan',
+      plateId: 'c' as const,
+      color: options.cmykColors?.c || '#00ffff',
+      angle: (options.cmykAngles.c + rotOffset) % 360,
+      key: 'c' as const,
+      enabled: options.cmykEnabled?.c ?? true,
+      gain: options.cmykGain?.c ?? 1.0,
+    },
+    {
+      name: 'magenta',
+      plateId: 'm' as const,
+      color: options.cmykColors?.m || '#ff00ff',
+      angle: (options.cmykAngles.m + rotOffset) % 360,
+      key: 'm' as const,
+      enabled: options.cmykEnabled?.m ?? true,
+      gain: options.cmykGain?.m ?? 1.0,
+    },
+    {
+      name: 'yellow',
+      plateId: 'y' as const,
+      color: options.cmykColors?.y || '#ffff00',
+      angle: (options.cmykAngles.y + rotOffset) % 360,
+      key: 'yVal' as const,
+      enabled: options.cmykEnabled?.y ?? true,
+      gain: options.cmykGain?.y ?? 1.0,
+    },
+    {
+      name: 'black',
+      plateId: 'k' as const,
+      color: options.cmykColors?.k || '#000000',
+      angle: (options.cmykAngles.k + rotOffset) % 360,
+      key: 'k' as const,
+      enabled: options.cmykEnabled?.k ?? true,
+      gain: options.cmykGain?.k ?? 1.0,
+    },
   ];
+
+  const activeChannels = cmykChannels.filter((ch) => {
+    if (!ch.enabled) return false;
+    if (options.activePlate && options.activePlate !== 'all') {
+      return options.activePlate === ch.plateId;
+    }
+    return true;
+  });
 
   let channelGroups: string[] = [];
 
@@ -555,23 +819,186 @@ function generateCMYKSVG(
     channelGroups.push(`<rect width="${width}" height="${height}" fill="${options.bgColor}"/>`);
   }
 
-  cmykChannels.forEach((ch) => {
+  activeChannels.forEach((ch) => {
     const points = sampleGridPoints(imageData, width, height, options, ch.angle);
-    const circleElements: string[] = [];
+    const shapeElements: string[] = [];
 
     points.forEach((pt) => {
-      const channelVal = pt[ch.key] || 0;
+      const channelVal = (pt[ch.key] || 0) * ch.gain;
       const channelSize = channelVal * options.spacing * options.maxDotSize;
 
       if (channelSize < options.minDotSize || channelSize <= 0) return;
 
-      circleElements.push(
-        `<circle cx="${pt.x.toFixed(2)}" cy="${pt.y.toFixed(2)}" r="${(channelSize / 2).toFixed(2)}"/>`
-      );
+      const r = channelSize / 2;
+      const transformAttr = options.shapeRotation !== 0 ? ` transform="rotate(${options.shapeRotation} ${pt.x} ${pt.y})"` : '';
+
+      switch (activeShape) {
+        case 'circle':
+          shapeElements.push(`<circle cx="${pt.x.toFixed(2)}" cy="${pt.y.toFixed(2)}" r="${r.toFixed(2)}"${transformAttr}/>`);
+          break;
+        case 'square':
+          shapeElements.push(`<rect x="${(pt.x - r).toFixed(2)}" y="${(pt.y - r).toFixed(2)}" width="${channelSize.toFixed(2)}" height="${channelSize.toFixed(2)}"${transformAttr}/>`);
+          break;
+        case 'diamond':
+          shapeElements.push(`<rect x="${(pt.x - r).toFixed(2)}" y="${(pt.y - r).toFixed(2)}" width="${channelSize.toFixed(2)}" height="${channelSize.toFixed(2)}" transform="rotate(${options.shapeRotation + 45} ${pt.x} ${pt.y})"/>`);
+          break;
+        case 'triangle':
+          shapeElements.push(`<polygon points="${pt.x.toFixed(2)},${(pt.y - r).toFixed(2)} ${(pt.x + r).toFixed(2)},${(pt.y + r * 0.732).toFixed(2)} ${(pt.x - r).toFixed(2)},${(pt.y + r * 0.732).toFixed(2)}"${transformAttr}/>`);
+          break;
+        case 'hexagon': {
+          const hexPoints: string[] = [];
+          for (let i = 0; i < 6; i++) {
+            const angle = (i * Math.PI) / 3;
+            const hx = pt.x + r * Math.cos(angle);
+            const hy = pt.y + r * Math.sin(angle);
+            hexPoints.push(`${hx.toFixed(2)},${hy.toFixed(2)}`);
+          }
+          shapeElements.push(`<polygon points="${hexPoints.join(' ')}"${transformAttr}/>`);
+          break;
+        }
+        case 'star': {
+          const starPts: string[] = [];
+          const outerR = r;
+          const innerR = r * 0.42;
+          for (let i = 0; i < 10; i++) {
+            const radius = i % 2 === 0 ? outerR : innerR;
+            const angle = (i * Math.PI) / 5 - Math.PI / 2;
+            const sx = pt.x + radius * Math.cos(angle);
+            const sy = pt.y + radius * Math.sin(angle);
+            starPts.push(`${sx.toFixed(2)},${sy.toFixed(2)}`);
+          }
+          shapeElements.push(`<polygon points="${starPts.join(' ')}"${transformAttr}/>`);
+          break;
+        }
+        default:
+          shapeElements.push(`<circle cx="${pt.x.toFixed(2)}" cy="${pt.y.toFixed(2)}" r="${r.toFixed(2)}"${transformAttr}/>`);
+      }
     });
 
     channelGroups.push(
-      `<g id="${ch.name}" fill="${ch.color}" style="mix-blend-mode: multiply;">${circleElements.join('')}</g>`
+      `<g id="${ch.name}" fill="${ch.color}" style="mix-blend-mode: multiply;">${shapeElements.join('')}</g>`
+    );
+  });
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">
+  ${channelGroups.join('\n  ')}
+</svg>`;
+}
+
+// Generate RGB Additive Color Separation SVG String
+function generateRGBSVG(
+  imageData: ImageData,
+  width: number,
+  height: number,
+  options: HalftoneOptions,
+  optimizePath: boolean = true
+): string {
+  const activeShape = options.pattern === 'cmyk' ? 'circle' : options.pattern;
+  const rotOffset = options.separationOffsetAngle || 0;
+
+  const rgbChannels = [
+    {
+      name: 'red',
+      plateId: 'r' as const,
+      color: options.rgbColors?.r || '#ff1744',
+      angle: ((options.rgbAngles?.r ?? 15) + rotOffset) % 360,
+      key: 'r' as const,
+      enabled: options.rgbEnabled?.r ?? true,
+      gain: options.rgbGain?.r ?? 1.0,
+    },
+    {
+      name: 'green',
+      plateId: 'g' as const,
+      color: options.rgbColors?.g || '#00e676',
+      angle: ((options.rgbAngles?.g ?? 75) + rotOffset) % 360,
+      key: 'g' as const,
+      enabled: options.rgbEnabled?.g ?? true,
+      gain: options.rgbGain?.g ?? 1.0,
+    },
+    {
+      name: 'blue',
+      plateId: 'b' as const,
+      color: options.rgbColors?.b || '#2979ff',
+      angle: ((options.rgbAngles?.b ?? 0) + rotOffset) % 360,
+      key: 'b' as const,
+      enabled: options.rgbEnabled?.b ?? true,
+      gain: options.rgbGain?.b ?? 1.0,
+    },
+  ];
+
+  const activeChannels = rgbChannels.filter((ch) => {
+    if (!ch.enabled) return false;
+    if (options.activePlate && options.activePlate !== 'all') {
+      return options.activePlate === ch.plateId;
+    }
+    return true;
+  });
+
+  let channelGroups: string[] = [];
+
+  if (!options.transparentBg) {
+    channelGroups.push(`<rect width="${width}" height="${height}" fill="${options.bgColor}"/>`);
+  }
+
+  activeChannels.forEach((ch) => {
+    const points = sampleGridPoints(imageData, width, height, options, ch.angle);
+    const shapeElements: string[] = [];
+
+    points.forEach((pt) => {
+      const rawIntensity = pt[ch.key] / 255;
+      const intensity = options.invert ? (1 - rawIntensity) : rawIntensity;
+      const channelSize = intensity * options.spacing * options.maxDotSize * ch.gain;
+
+      if (channelSize < options.minDotSize || channelSize <= 0) return;
+
+      const r = channelSize / 2;
+      const transformAttr = options.shapeRotation !== 0 ? ` transform="rotate(${options.shapeRotation} ${pt.x} ${pt.y})"` : '';
+
+      switch (activeShape) {
+        case 'circle':
+          shapeElements.push(`<circle cx="${pt.x.toFixed(2)}" cy="${pt.y.toFixed(2)}" r="${r.toFixed(2)}"${transformAttr}/>`);
+          break;
+        case 'square':
+          shapeElements.push(`<rect x="${(pt.x - r).toFixed(2)}" y="${(pt.y - r).toFixed(2)}" width="${channelSize.toFixed(2)}" height="${channelSize.toFixed(2)}"${transformAttr}/>`);
+          break;
+        case 'diamond':
+          shapeElements.push(`<rect x="${(pt.x - r).toFixed(2)}" y="${(pt.y - r).toFixed(2)}" width="${channelSize.toFixed(2)}" height="${channelSize.toFixed(2)}" transform="rotate(${options.shapeRotation + 45} ${pt.x} ${pt.y})"/>`);
+          break;
+        case 'triangle':
+          shapeElements.push(`<polygon points="${pt.x.toFixed(2)},${(pt.y - r).toFixed(2)} ${(pt.x + r).toFixed(2)},${(pt.y + r * 0.732).toFixed(2)} ${(pt.x - r).toFixed(2)},${(pt.y + r * 0.732).toFixed(2)}"${transformAttr}/>`);
+          break;
+        case 'hexagon': {
+          const hexPoints: string[] = [];
+          for (let i = 0; i < 6; i++) {
+            const angle = (i * Math.PI) / 3;
+            const hx = pt.x + r * Math.cos(angle);
+            const hy = pt.y + r * Math.sin(angle);
+            hexPoints.push(`${hx.toFixed(2)},${hy.toFixed(2)}`);
+          }
+          shapeElements.push(`<polygon points="${hexPoints.join(' ')}"${transformAttr}/>`);
+          break;
+        }
+        case 'star': {
+          const starPts: string[] = [];
+          const outerR = r;
+          const innerR = r * 0.42;
+          for (let i = 0; i < 10; i++) {
+            const radius = i % 2 === 0 ? outerR : innerR;
+            const angle = (i * Math.PI) / 5 - Math.PI / 2;
+            const sx = pt.x + radius * Math.cos(angle);
+            const sy = pt.y + radius * Math.sin(angle);
+            starPts.push(`${sx.toFixed(2)},${sy.toFixed(2)}`);
+          }
+          shapeElements.push(`<polygon points="${starPts.join(' ')}"${transformAttr}/>`);
+          break;
+        }
+        default:
+          shapeElements.push(`<circle cx="${pt.x.toFixed(2)}" cy="${pt.y.toFixed(2)}" r="${r.toFixed(2)}"${transformAttr}/>`);
+      }
+    });
+
+    channelGroups.push(
+      `<g id="${ch.name}" fill="${ch.color}" style="mix-blend-mode: screen;">${shapeElements.join('')}</g>`
     );
   });
 

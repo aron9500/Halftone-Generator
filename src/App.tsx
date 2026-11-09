@@ -220,6 +220,7 @@ export default function App() {
           onImageUpload={handleImageUpload}
           onOpenSamples={() => setIsSampleOpen(true)}
           onToggleInvert={() => setOptions((prev) => ({ ...prev, invert: !prev.invert }))}
+          onSelectPlate={(plate) => setOptions((prev) => ({ ...prev, activePlate: plate }))}
         />
       </div>
 

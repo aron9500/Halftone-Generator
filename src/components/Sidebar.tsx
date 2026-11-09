@@ -20,10 +20,16 @@ import {
   Sliders,
   Contrast,
   Droplets,
-  FileImage,
   ImagePlus,
   ArrowDownUp,
   X,
+  Compass,
+  Triangle,
+  Heart,
+  Disc,
+  Eye,
+  EyeOff,
+  Check,
 } from 'lucide-react';
 import { SAMPLE_IMAGES } from '../utils/sampleImages';
 import { PRESETS } from '../utils/presets';
@@ -100,12 +106,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const patternIcons: { type: PatternType; label: string; icon: React.ReactNode }[] = [
     { type: 'circle', label: 'Kreise', icon: <Circle className="w-4 h-4" /> },
     { type: 'square', label: 'Quadrate', icon: <Square className="w-4 h-4" /> },
+    { type: 'diamond', label: 'Rauten', icon: <Square className="w-4 h-4 rotate-45 scale-90" /> },
+    { type: 'triangle', label: 'Dreiecke', icon: <Triangle className="w-4 h-4" /> },
+    { type: 'hexagon', label: 'Waben', icon: <Hexagon className="w-4 h-4" /> },
     { type: 'line', label: 'Linien', icon: <Minus className="w-4 h-4 stroke-[3]" /> },
-    { type: 'diamond', label: 'Rauten', icon: <Square className="w-4 h-4 rotate-45" /> },
-    { type: 'hexagon', label: 'Hexagon', icon: <Hexagon className="w-4 h-4" /> },
+    {
+      type: 'cross',
+      label: 'Kreuze',
+      icon: (
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M10 2h4v8h8v4h-8v8h-4v-8H2v-4h8V2z" />
+        </svg>
+      ),
+    },
     { type: 'star', label: 'Sterne', icon: <Star className="w-4 h-4" /> },
+    { type: 'ring', label: 'Ringe', icon: <Disc className="w-4 h-4" /> },
+    { type: 'heart', label: 'Herzen', icon: <Heart className="w-4 h-4" /> },
     { type: 'cmyk', label: 'CMYK Druck', icon: <Layers className="w-4 h-4" /> },
-  ] as any;
+  ];
+
+  // Helper for Solo-ing a separation channel
+  const handleSoloPlate = (mode: 'cmyk' | 'rgb', key: 'c' | 'm' | 'y' | 'k' | 'r' | 'g' | 'b') => {
+    if (options.activePlate === key) {
+      updateOption('activePlate', 'all');
+    } else {
+      updateOption('activePlate', key);
+    }
+  };
 
   return (
     <aside className="w-full md:w-80 lg:w-96 bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden shrink-0 z-10 text-slate-800">
@@ -168,27 +195,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Pattern Type Selector */}
             <div className="space-y-2">
               <label className="text-slate-900 font-bold uppercase tracking-wider text-[11px] flex items-center justify-between">
-                <span>Rastermuster</span>
+                <span>Rastermuster (Punktform)</span>
                 <span className="text-[10px] text-slate-800 font-mono bg-slate-100 px-2 py-0.5 rounded border border-slate-200 uppercase font-semibold">
                   {options.pattern}
                 </span>
               </label>
 
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-1.5">
                 {patternIcons.map((p) => {
                   const isSelected = options.pattern === p.type;
                   return (
                     <button
                       key={p.type}
                       onClick={() => updateOption('pattern', p.type as PatternType)}
-                      className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
                         isSelected
                           ? 'bg-black text-white border-black font-semibold shadow-sm'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-black hover:border-slate-300'
                       }`}
+                      title={`Form wählen: ${p.label}`}
                     >
                       {p.icon}
-                      <span className="text-[10px] text-center leading-tight truncate w-full">{p.label}</span>
+                      <span className="text-[9px] text-center leading-tight truncate w-full">{p.label}</span>
                     </button>
                   );
                 })}
@@ -320,29 +348,105 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </div>
 
-            {/* Rasterwinkel / Angle */}
-            <div className="space-y-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            {/* Rasterwinkel / Angle with Visual Dial */}
+            <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
               <div className="flex items-center justify-between">
                 <label className="text-slate-800 font-semibold text-xs flex items-center gap-1.5">
-                  <RotateCw className="w-3.5 h-3.5 text-slate-700" />
-                  <span>Rasterwinkel</span>
+                  <Compass className="w-3.5 h-3.5 text-slate-800" />
+                  <span>Rasterwinkel (Grid Angle)</span>
                 </label>
-                <span className="text-black font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200">{options.angle}°</span>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    max="360"
+                    value={options.angle}
+                    onChange={(e) => updateOption('angle', Math.max(0, Math.min(360, parseInt(e.target.value) || 0)))}
+                    className="w-14 text-center text-black font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-slate-200 text-xs focus:outline-none focus:border-black"
+                  />
+                  <span className="text-slate-500 font-mono text-xs">°</span>
+                </div>
               </div>
 
-              <input
-                type="range"
-                min="0"
-                max="360"
-                step="5"
-                value={options.angle}
-                onChange={(e) => updateOption('angle', parseInt(e.target.value))}
-                className="w-full accent-black bg-slate-200 rounded-lg h-1.5 cursor-pointer"
-              />
+              {/* Slider & Quick Compass Dial Row */}
+              <div className="flex items-center gap-3">
+                {/* Interactive SVG Compass Dial */}
+                <div
+                  className="relative w-14 h-14 rounded-full bg-white border border-slate-300 shadow-inner flex items-center justify-center cursor-pointer select-none shrink-0 touch-none hover:border-black transition-colors group"
+                  title="Klicke oder ziehe, um den Winkel intuitiv einzustellen"
+                  onPointerDown={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const handleMove = (ev: PointerEvent) => {
+                      const cx = rect.left + rect.width / 2;
+                      const cy = rect.top + rect.height / 2;
+                      let deg = Math.round((Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180) / Math.PI);
+                      if (deg < 0) deg += 360;
+                      updateOption('angle', Math.round(deg / 5) * 5 % 360);
+                    };
+                    const handleUp = () => {
+                      window.removeEventListener('pointermove', handleMove);
+                      window.removeEventListener('pointerup', handleUp);
+                    };
+                    window.addEventListener('pointermove', handleMove);
+                    window.addEventListener('pointerup', handleUp);
+                    handleMove(e.nativeEvent);
+                  }}
+                >
+                  <svg className="w-full h-full p-1" viewBox="0 0 100 100">
+                    {[0, 45, 90, 135, 180, 225, 270, 315].map((t) => {
+                      const r = (t * Math.PI) / 180;
+                      return (
+                        <line
+                          key={t}
+                          x1={50 + 44 * Math.cos(r)}
+                          y1={50 + 44 * Math.sin(r)}
+                          x2={50 + 36 * Math.cos(r)}
+                          y2={50 + 36 * Math.sin(r)}
+                          stroke="#cbd5e1"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                        />
+                      );
+                    })}
+                    <circle cx="50" cy="50" r="3.5" fill="#0f172a" />
+                    {(() => {
+                      const rad = (options.angle * Math.PI) / 180;
+                      const nx = 50 + 38 * Math.cos(rad);
+                      const ny = 50 + 38 * Math.sin(rad);
+                      return (
+                        <>
+                          <line x1="50" y1="50" x2={nx} y2={ny} stroke="#0f172a" strokeWidth="2.5" strokeLinecap="round" />
+                          <circle cx={nx} cy={ny} r="4.5" fill="#0f172a" />
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </div>
+
+                {/* Range Slider */}
+                <div className="flex-1 space-y-1">
+                  <input
+                    type="range"
+                    min="0"
+                    max="360"
+                    step="5"
+                    value={options.angle}
+                    onChange={(e) => updateOption('angle', parseInt(e.target.value))}
+                    className="w-full accent-black bg-slate-200 rounded-lg h-1.5 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+                    <span>0°</span>
+                    <span>90°</span>
+                    <span>180°</span>
+                    <span>270°</span>
+                    <span>360°</span>
+                  </div>
+                </div>
+              </div>
 
               {/* Angle Preset Quick Buttons */}
-              <div className="flex gap-1.5 pt-1">
-                {[0, 15, 30, 45, 60, 75, 90].map((deg) => (
+              <div className="flex gap-1 pt-1">
+                {[0, 15, 30, 45, 60, 75, 90, 135].map((deg) => (
                   <button
                     key={deg}
                     onClick={() => updateOption('angle', deg)}
@@ -356,6 +460,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Individual Shape Rotation */}
+            <div className="space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <div className="flex items-center justify-between">
+                <label className="text-slate-800 font-semibold text-xs flex items-center gap-1.5">
+                  <RotateCw className="w-3.5 h-3.5 text-slate-700" />
+                  <span>Form-Eigenrotation (Shape Rotation)</span>
+                </label>
+                <span className="text-black font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200">{options.shapeRotation}°</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="360"
+                step="5"
+                value={options.shapeRotation}
+                onChange={(e) => updateOption('shapeRotation', parseInt(e.target.value))}
+                className="w-full accent-black bg-slate-200 rounded-lg h-1.5 cursor-pointer"
+              />
+              <div className="flex gap-1.5">
+                {[0, 45, 90, 180].map((deg) => (
+                  <button
+                    key={deg}
+                    onClick={() => updateOption('shapeRotation', deg)}
+                    className={`flex-1 py-1 rounded text-[10px] font-mono border transition-all cursor-pointer ${
+                      options.shapeRotation === deg
+                        ? 'bg-black text-white font-bold border-black'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {deg}°
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-500 leading-normal">
+                Dreht jede einzelne Form unabhängig von der Ausrichtung des Rasters.
+              </p>
             </div>
 
             {/* Line Thickness Ratio (when pattern is line) */}
@@ -381,29 +523,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {/* TAB 2: FARBEN & STIL */}
+        {/* TAB 2: FARBEN & FARBAUSZUG (COLOR SEPARATION) */}
         {activeTab === 'colors' && (
           <div className="space-y-5">
             {/* Color Mode Selector */}
             <div className="space-y-2">
-              <label className="text-slate-900 font-bold uppercase tracking-wider text-[11px]">Farbmodus</label>
+              <label className="text-slate-900 font-bold uppercase tracking-wider text-[11px]">Farbmodus & Farbauszug</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { mode: 'monochrome', label: 'Monochrom (2 Farben)' },
-                  { mode: 'original', label: 'Originalfarben' },
-                  { mode: 'duotone', label: 'Duotone Verlauf' },
-                  { mode: 'cmyk', label: 'CMYK Druckkanäle' },
+                  { mode: 'monochrome', label: 'Monochrom (2 Farben)', desc: 'Klassisches Raster' },
+                  { mode: 'original', label: 'Originalfarben', desc: 'Farben pro Punkt' },
+                  { mode: 'duotone', label: 'Duotone Verlauf', desc: 'Schatten / Lichter' },
+                  { mode: 'cmyk', label: 'CMYK Farbauszug', desc: '4-Farb Druckkanäle' },
+                  { mode: 'rgb', label: 'RGB Farbauszug', desc: '3-Kanal Additiv (Screen)' },
                 ].map((item) => (
                   <button
                     key={item.mode}
-                    onClick={() => updateOption('colorMode', item.mode as ColorMode)}
-                    className={`p-2.5 rounded-xl border text-xs text-left transition-all cursor-pointer ${
+                    onClick={() => {
+                      updateOption('colorMode', item.mode as ColorMode);
+                      // If switching to RGB, suggest dark background if currently pure white
+                      if (item.mode === 'rgb' && options.bgColor.toLowerCase() === '#ffffff') {
+                        updateOption('bgColor', '#05070f');
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                       options.colorMode === item.mode
                         ? 'bg-black text-white border-black font-bold shadow-sm'
                         : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    {item.label}
+                    <div className="font-bold text-xs">{item.label}</div>
+                    <div className={`text-[9px] mt-0.5 ${options.colorMode === item.mode ? 'text-slate-300' : 'text-slate-400'}`}>
+                      {item.desc}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -487,40 +639,527 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
 
-            {/* CMYK Specific Fine-Tuning Angles */}
+            {/* CMYK 4-COLOR SEPARATION PANEL */}
             {(options.colorMode === 'cmyk' || options.pattern === 'cmyk') && (
-              <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                <h4 className="font-semibold text-slate-900 text-xs flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-slate-800" />
-                  <span>CMYK Rasterwinkel Justierung</span>
-                </h4>
-
-                {[
-                  { label: 'Cyan (C)', key: 'c' as const, color: 'text-cyan-600' },
-                  { label: 'Magenta (M)', key: 'm' as const, color: 'text-pink-600' },
-                  { label: 'Yellow (Y)', key: 'y' as const, color: 'text-yellow-600' },
-                  { label: 'Key / Schwarz (K)', key: 'k' as const, color: 'text-slate-900' },
-                ].map((ch) => (
-                  <div key={ch.key} className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className={`font-bold ${ch.color}`}>{ch.label}</span>
-                      <span className="font-mono text-slate-700">{options.cmykAngles[ch.key]}°</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="180"
-                      value={options.cmykAngles[ch.key]}
-                      onChange={(e) =>
-                        updateOption('cmykAngles', {
-                          ...options.cmykAngles,
-                          [ch.key]: parseInt(e.target.value),
-                        })
-                      }
-                      className="w-full accent-black bg-slate-200 rounded h-1.5 cursor-pointer"
-                    />
+              <div className="space-y-4">
+                {/* Information Badge */}
+                <div className="p-3 bg-cyan-50/50 border border-cyan-200 rounded-xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-cyan-700" />
+                      <span>CMYK Farbauszug (Druckplatten)</span>
+                    </span>
+                    <span className="text-[10px] bg-cyan-100 text-cyan-900 font-mono font-bold px-1.5 py-0.5 rounded">
+                      Subtraktiv
+                    </span>
                   </div>
-                ))}
+                  <p className="text-[10px] text-slate-600 leading-relaxed">
+                    Echter 4-Platten-Druckraster mit individuellen Winkeln, Intensität und Kanaltrennung (Multiply-Blend).
+                  </p>
+                </div>
+
+                {/* Real-Time Plate Inspection Selector */}
+                <div className="space-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-[11px]">Echtzeit Platten-Vorschau</span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {options.activePlate === 'all' ? 'Alle Kanäle aktiv' : `Platte [${options.activePlate.toUpperCase()}] isoliert`}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1">
+                    <button
+                      onClick={() => updateOption('activePlate', 'all')}
+                      className={`py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                        options.activePlate === 'all'
+                          ? 'bg-black text-white border-black shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      Alle
+                    </button>
+                    {[
+                      { key: 'c' as const, label: 'C Cyan', color: 'border-cyan-400 bg-cyan-50 text-cyan-800' },
+                      { key: 'm' as const, label: 'M Mag', color: 'border-pink-400 bg-pink-50 text-pink-800' },
+                      { key: 'y' as const, label: 'Y Yel', color: 'border-amber-400 bg-amber-50 text-amber-800' },
+                      { key: 'k' as const, label: 'K Key', color: 'border-slate-400 bg-slate-100 text-slate-900' },
+                    ].map((btn) => (
+                      <button
+                        key={btn.key}
+                        onClick={() => handleSoloPlate('cmyk', btn.key)}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                          options.activePlate === btn.key
+                            ? 'bg-black text-white border-black ring-2 ring-black/20 shadow-xs'
+                            : `${btn.color} hover:brightness-95`
+                        }`}
+                      >
+                        {btn.key.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* CMYK Angle Presets */}
+                <div className="space-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="font-bold text-slate-800 text-[11px] block">Winkel-Presets (Moiré-Vermeidung)</span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { name: 'Standard Litho', angles: { c: 15, m: 75, y: 0, k: 45 } },
+                      { name: 'Moiré-Frei 30°', angles: { c: 15, m: 45, y: 75, k: 105 } },
+                      { name: 'Orthogonal', angles: { c: 0, m: 30, y: 60, k: 90 } },
+                      { name: 'Parallel (45°)', angles: { c: 45, m: 45, y: 45, k: 45 } },
+                    ].map((preset) => (
+                      <button
+                        key={preset.name}
+                        onClick={() => updateOption('cmykAngles', preset.angles)}
+                        className="py-1 px-2 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-[10px] transition-colors cursor-pointer text-left"
+                      >
+                        {preset.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Global Separation Angle Offset */}
+                <div className="space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-slate-800 font-semibold text-xs flex items-center gap-1.5">
+                      <RotateCw className="w-3.5 h-3.5 text-slate-700" />
+                      <span>Separations-Winkelversatz (Global)</span>
+                    </label>
+                    <span className="text-black font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
+                      +{options.separationOffsetAngle}°
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="180"
+                    step="5"
+                    value={options.separationOffsetAngle}
+                    onChange={(e) => updateOption('separationOffsetAngle', parseInt(e.target.value))}
+                    className="w-full accent-black bg-slate-200 rounded-lg h-1.5 cursor-pointer"
+                  />
+                  <p className="text-[10px] text-slate-500 leading-normal">
+                    Dreht alle 4 Farbplatten gleichzeitig, ohne die relativen Moiré-Abstände zu verändern.
+                  </p>
+                </div>
+
+                {/* Individual CMYK Channel Cards */}
+                <div className="space-y-2.5">
+                  {[
+                    {
+                      key: 'c' as const,
+                      label: 'Cyan (C)',
+                      badgeBg: 'bg-cyan-500',
+                      textColor: 'text-cyan-700',
+                      borderColor: 'border-cyan-200',
+                    },
+                    {
+                      key: 'm' as const,
+                      label: 'Magenta (M)',
+                      badgeBg: 'bg-pink-500',
+                      textColor: 'text-pink-700',
+                      borderColor: 'border-pink-200',
+                    },
+                    {
+                      key: 'y' as const,
+                      label: 'Yellow (Y)',
+                      badgeBg: 'bg-yellow-400',
+                      textColor: 'text-amber-800',
+                      borderColor: 'border-amber-200',
+                    },
+                    {
+                      key: 'k' as const,
+                      label: 'Key / Schwarz (K)',
+                      badgeBg: 'bg-slate-900',
+                      textColor: 'text-slate-900',
+                      borderColor: 'border-slate-300',
+                    },
+                  ].map((ch) => {
+                    const isEnabled = options.cmykEnabled?.[ch.key] ?? true;
+                    const angle = options.cmykAngles[ch.key];
+                    const color = options.cmykColors?.[ch.key] || '#000000';
+                    const gain = options.cmykGain?.[ch.key] ?? 1.0;
+
+                    return (
+                      <div
+                        key={ch.key}
+                        className={`p-3 rounded-xl border bg-slate-50/70 transition-all space-y-2 ${ch.borderColor} ${
+                          !isEnabled ? 'opacity-40' : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateOption('cmykEnabled', {
+                                  ...options.cmykEnabled,
+                                  [ch.key]: !isEnabled,
+                                })
+                              }
+                              className={`p-1 rounded-md text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all ${
+                                isEnabled ? 'bg-black text-white' : 'bg-slate-200 text-slate-500'
+                              }`}
+                              title={isEnabled ? 'Kanal deaktivieren' : 'Kanal aktivieren'}
+                            >
+                              {isEnabled ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                            </button>
+                            <span className={`font-bold text-xs ${ch.textColor}`}>{ch.label}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* Solo Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleSoloPlate('cmyk', ch.key)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono transition-colors cursor-pointer border ${
+                                options.activePlate === ch.key
+                                  ? 'bg-black text-white border-black'
+                                  : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              Solo
+                            </button>
+
+                            {/* Color picker */}
+                            <input
+                              type="color"
+                              value={color}
+                              onChange={(e) =>
+                                updateOption('cmykColors', {
+                                  ...options.cmykColors,
+                                  [ch.key]: e.target.value,
+                                })
+                              }
+                              className="w-5 h-5 rounded cursor-pointer border border-slate-300 bg-white"
+                              title="Druckfarbe anpassen"
+                            />
+
+                            <span className="font-mono text-[11px] font-bold text-slate-800 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                              {angle}°
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Angle Slider */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>Rasterwinkel Platte</span>
+                            <span>{angle}°</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="180"
+                            step="5"
+                            value={angle}
+                            onChange={(e) =>
+                              updateOption('cmykAngles', {
+                                ...options.cmykAngles,
+                                [ch.key]: parseInt(e.target.value),
+                              })
+                            }
+                            className="w-full accent-black bg-slate-200 rounded h-1.5 cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Gain / Intensity Slider */}
+                        <div className="space-y-1 pt-1 border-t border-slate-200">
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>Farbdichte / Gain</span>
+                            <span className="font-mono">{(gain * 100).toFixed(0)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0.2"
+                            max="1.8"
+                            step="0.05"
+                            value={gain}
+                            onChange={(e) =>
+                              updateOption('cmykGain', {
+                                ...options.cmykGain,
+                                [ch.key]: parseFloat(e.target.value),
+                              })
+                            }
+                            className="w-full accent-black bg-slate-200 rounded h-1 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* RGB 3-COLOR SEPARATION PANEL */}
+            {options.colorMode === 'rgb' && (
+              <div className="space-y-4">
+                {/* Information Badge */}
+                <div className="p-3 bg-indigo-50/60 border border-indigo-200 rounded-xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-700" />
+                      <span>RGB Farbauszug (Additiv / Screen)</span>
+                    </span>
+                    <span className="text-[10px] bg-indigo-100 text-indigo-900 font-mono font-bold px-1.5 py-0.5 rounded">
+                      Additiv
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-600 leading-relaxed">
+                    3-Kanal Lichtfarbentrennung (Rot, Grün, Blau) mit additivem Screen-Blending. Ideal auf dunklem Hintergrund für Monitor- & Neon-Optik.
+                  </p>
+                </div>
+
+                {/* Real-Time Plate Inspection Selector */}
+                <div className="space-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-[11px]">Echtzeit Kanal-Vorschau</span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {options.activePlate === 'all' ? 'Alle Kanäle aktiv' : `Kanal [${options.activePlate.toUpperCase()}] isoliert`}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    <button
+                      onClick={() => updateOption('activePlate', 'all')}
+                      className={`py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                        options.activePlate === 'all'
+                          ? 'bg-black text-white border-black shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      Alle
+                    </button>
+                    {[
+                      { key: 'r' as const, label: 'R Rot', color: 'border-red-400 bg-red-50 text-red-800' },
+                      { key: 'g' as const, label: 'G Grün', color: 'border-emerald-400 bg-emerald-50 text-emerald-800' },
+                      { key: 'b' as const, label: 'B Blau', color: 'border-blue-400 bg-blue-50 text-blue-800' },
+                    ].map((btn) => (
+                      <button
+                        key={btn.key}
+                        onClick={() => handleSoloPlate('rgb', btn.key)}
+                        className={`py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                          options.activePlate === btn.key
+                            ? 'bg-black text-white border-black ring-2 ring-black/20 shadow-xs'
+                            : `${btn.color} hover:brightness-95`
+                        }`}
+                      >
+                        {btn.key.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Background Color & Dark Mode Helper for RGB */}
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-800 font-medium text-xs">Hintergrundfarbe (Canvas)</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={options.bgColor}
+                        onChange={(e) => updateOption('bgColor', e.target.value)}
+                        className="w-7 h-7 rounded-lg cursor-pointer border border-slate-300 bg-white"
+                      />
+                      <span className="font-mono text-[11px] text-slate-600 uppercase bg-white px-2 py-0.5 rounded border border-slate-200">
+                        {options.bgColor}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1 border-t border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => updateOption('bgColor', '#05070f')}
+                      className="flex-1 py-1 px-2 rounded-lg bg-black text-white text-[10px] font-bold cursor-pointer"
+                    >
+                      Schwarz (#05070f)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateOption('bgColor', '#0f172a')}
+                      className="flex-1 py-1 px-2 rounded-lg bg-slate-900 text-white text-[10px] font-bold cursor-pointer"
+                    >
+                      Dunkelblau (#0f172a)
+                    </button>
+                  </div>
+                </div>
+
+                {/* RGB Angle Presets */}
+                <div className="space-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="font-bold text-slate-800 text-[11px] block">RGB Winkel-Presets</span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[
+                      { name: 'Standard 30°', angles: { r: 15, g: 75, b: 0 } },
+                      { name: 'Triad 60°', angles: { r: 0, g: 60, b: 120 } },
+                      { name: 'Orthogonal', angles: { r: 0, g: 45, b: 90 } },
+                      { name: 'Parallel (45°)', angles: { r: 45, g: 45, b: 45 } },
+                    ].map((preset) => (
+                      <button
+                        key={preset.name}
+                        onClick={() => updateOption('rgbAngles', preset.angles)}
+                        className="py-1 px-2 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-[10px] transition-colors cursor-pointer text-left"
+                      >
+                        {preset.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Global Separation Angle Offset for RGB */}
+                <div className="space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-slate-800 font-semibold text-xs flex items-center gap-1.5">
+                      <RotateCw className="w-3.5 h-3.5 text-slate-700" />
+                      <span>RGB Winkelversatz (Global)</span>
+                    </label>
+                    <span className="text-black font-mono font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
+                      +{options.separationOffsetAngle}°
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="180"
+                    step="5"
+                    value={options.separationOffsetAngle}
+                    onChange={(e) => updateOption('separationOffsetAngle', parseInt(e.target.value))}
+                    className="w-full accent-black bg-slate-200 rounded-lg h-1.5 cursor-pointer"
+                  />
+                </div>
+
+                {/* Individual RGB Channel Cards */}
+                <div className="space-y-2.5">
+                  {[
+                    {
+                      key: 'r' as const,
+                      label: 'Rot (R)',
+                      textColor: 'text-red-700',
+                      borderColor: 'border-red-200',
+                    },
+                    {
+                      key: 'g' as const,
+                      label: 'Grün (G)',
+                      textColor: 'text-emerald-700',
+                      borderColor: 'border-emerald-200',
+                    },
+                    {
+                      key: 'b' as const,
+                      label: 'Blau (B)',
+                      textColor: 'text-blue-700',
+                      borderColor: 'border-blue-200',
+                    },
+                  ].map((ch) => {
+                    const isEnabled = options.rgbEnabled?.[ch.key] ?? true;
+                    const angle = options.rgbAngles?.[ch.key] ?? (ch.key === 'r' ? 15 : ch.key === 'g' ? 75 : 0);
+                    const color = options.rgbColors?.[ch.key] || (ch.key === 'r' ? '#ff1744' : ch.key === 'g' ? '#00e676' : '#2979ff');
+                    const gain = options.rgbGain?.[ch.key] ?? 1.0;
+
+                    return (
+                      <div
+                        key={ch.key}
+                        className={`p-3 rounded-xl border bg-slate-50/70 transition-all space-y-2 ${ch.borderColor} ${
+                          !isEnabled ? 'opacity-40' : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateOption('rgbEnabled', {
+                                  ...options.rgbEnabled,
+                                  [ch.key]: !isEnabled,
+                                })
+                              }
+                              className={`p-1 rounded-md text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-all ${
+                                isEnabled ? 'bg-black text-white' : 'bg-slate-200 text-slate-500'
+                              }`}
+                              title={isEnabled ? 'Kanal deaktivieren' : 'Kanal aktivieren'}
+                            >
+                              {isEnabled ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                            </button>
+                            <span className={`font-bold text-xs ${ch.textColor}`}>{ch.label}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSoloPlate('rgb', ch.key)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono transition-colors cursor-pointer border ${
+                                options.activePlate === ch.key
+                                  ? 'bg-black text-white border-black'
+                                  : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                              }`}
+                            >
+                              Solo
+                            </button>
+
+                            <input
+                              type="color"
+                              value={color}
+                              onChange={(e) =>
+                                updateOption('rgbColors', {
+                                  ...options.rgbColors,
+                                  [ch.key]: e.target.value,
+                                })
+                              }
+                              className="w-5 h-5 rounded cursor-pointer border border-slate-300 bg-white"
+                              title="Kanal-Lichtfarbe anpassen"
+                            />
+
+                            <span className="font-mono text-[11px] font-bold text-slate-800 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                              {angle}°
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Angle Slider */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>Rasterwinkel</span>
+                            <span>{angle}°</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="180"
+                            step="5"
+                            value={angle}
+                            onChange={(e) =>
+                              updateOption('rgbAngles', {
+                                ...options.rgbAngles,
+                                [ch.key]: parseInt(e.target.value),
+                              })
+                            }
+                            className="w-full accent-black bg-slate-200 rounded h-1.5 cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Gain / Intensity Slider */}
+                        <div className="space-y-1 pt-1 border-t border-slate-200">
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>Kanal-Intensität</span>
+                            <span className="font-mono">{(gain * 100).toFixed(0)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0.2"
+                            max="1.8"
+                            step="0.05"
+                            value={gain}
+                            onChange={(e) =>
+                              updateOption('rgbGain', {
+                                ...options.rgbGain,
+                                [ch.key]: parseFloat(e.target.value),
+                              })
+                            }
+                            className="w-full accent-black bg-slate-200 rounded h-1 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

@@ -1,34 +1,7 @@
 import { HalftoneOptions } from '../types';
+import { DEFAULT_OPTIONS } from './presets';
 
-export const DEFAULT_OPTIONS: HalftoneOptions = {
-  spacing: 12,
-  maxDotSize: 1.0,
-  minDotSize: 0.5,
-  pattern: 'circle',
-  gridType: 'square',
-  angle: 45,
-  shapeRotation: 0,
-  invert: false,
-  brightness: 0,
-  contrast: 0,
-  saturation: 0,
-  gamma: 1.0,
-  threshold: 0,
-  blur: 0,
-  colorMode: 'monochrome',
-  fgColor: '#000000',
-  bgColor: '#ffffff',
-  transparentBg: false,
-  duotoneColor1: '#0f172a',
-  duotoneColor2: '#38bdf8',
-  cmykAngles: {
-    c: 15,
-    m: 75,
-    y: 0,
-    k: 45,
-  },
-  lineThicknessRatio: 1.0,
-};
+export { DEFAULT_OPTIONS };
 
 /**
  * Export current HalftoneOptions to a formatted .json file download
@@ -64,6 +37,34 @@ export function importSettingsFromJSON(file: File): Promise<HalftoneOptions> {
           cmykAngles: {
             ...DEFAULT_OPTIONS.cmykAngles,
             ...(parsed.cmykAngles || {}),
+          },
+          cmykEnabled: {
+            ...DEFAULT_OPTIONS.cmykEnabled,
+            ...(parsed.cmykEnabled || {}),
+          },
+          cmykColors: {
+            ...DEFAULT_OPTIONS.cmykColors,
+            ...(parsed.cmykColors || {}),
+          },
+          cmykGain: {
+            ...DEFAULT_OPTIONS.cmykGain,
+            ...(parsed.cmykGain || {}),
+          },
+          rgbAngles: {
+            ...DEFAULT_OPTIONS.rgbAngles,
+            ...(parsed.rgbAngles || {}),
+          },
+          rgbEnabled: {
+            ...DEFAULT_OPTIONS.rgbEnabled,
+            ...(parsed.rgbEnabled || {}),
+          },
+          rgbColors: {
+            ...DEFAULT_OPTIONS.rgbColors,
+            ...(parsed.rgbColors || {}),
+          },
+          rgbGain: {
+            ...DEFAULT_OPTIONS.rgbGain,
+            ...(parsed.rgbGain || {}),
           },
         };
 
